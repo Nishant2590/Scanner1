@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Packet Scan Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: scan desk first (input + big verdict), then counters, then a filterable checklist that opens on "Not scanned". Look: shipping-label paper, mono tracking IDs, orange only for what is still missing. */
+:root{
+  --bg:#E7EBEF; --surface:#FFFFFF; --ink:#10161D; --muted:#566371; --line:#C9D1D9; --focus:#1D5FD0;
+  --pending:#D9500B; --pending-ink:#A63A00; --pending-soft:#FFE9DB;
+  --ok:#157A43; --ok-soft:#D9F2E3;
+  --bad:#BF2A2A; --bad-soft:#FCE0E0;
+  --dup:#8F5E00; --dup-soft:#FFF0C9;
+  --btn:#10161D; --btn-ink:#FFFFFF;
+  --f-display:'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1217; --surface:#151C23; --ink:#E8EDF2; --muted:#8F9CA9; --line:#27313B; --focus:#7DB2FF;
+    --pending:#FF8A4C; --pending-ink:#FFB083; --pending-soft:#3A2314;
+    --ok:#4DC584; --ok-soft:#10301F;
+    --bad:#FF8080; --bad-soft:#391616;
+    --dup:#E8B64A; --dup-soft:#33270C;
+    --btn:#E8EDF2; --btn-ink:#10161D;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1217; --surface:#151C23; --ink:#E8EDF2; --muted:#8F9CA9; --line:#27313B; --focus:#7DB2FF;
+  --pending:#FF8A4C; --pending-ink:#FFB083; --pending-soft:#3A2314;
+  --ok:#4DC584; --ok-soft:#10301F;
+  --bad:#FF8080; --bad-soft:#391616;
+  --dup:#E8B64A; --dup-soft:#33270C;
+  --btn:#E8EDF2; --btn-ink:#10161D;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:max(20px,env(safe-area-inset-top,0px)) calc(56px + env(safe-area-inset-bottom,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1040px;margin-inline:auto;display:grid;gap:16px}
+.muted{color:var(--muted)}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,6vw,42px);letter-spacing:.02em;text-transform:uppercase;margin:0;line-height:1;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 0;font-size:14px;max-width:56ch}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font-weight:600;border:1.5px solid var(--ink);background:transparent;padding:9px 15px;border-radius:6px;cursor:pointer;min-height:42px}
+.btn.primary{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+.btn.mini{padding:3px 10px;font-size:13px;font-weight:500;min-height:30px;border-color:var(--line)}
+.btn.warn{border-color:var(--bad);color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.example{background:var(--dup-soft);color:var(--dup);border-radius:6px;padding:10px 14px;font-size:14px}
+
+.desk,.statcard,.list,.import{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.desk{padding:16px;display:grid;gap:12px}
+.cap{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-weight:600;font-size:16px;color:var(--muted)}
+.scan-row{display:flex;gap:8px;flex-wrap:wrap}
+#scanInput{flex:1 1 240px;min-width:0;font-family:var(--f-mono);font-size:22px;padding:12px 14px;border:2px solid var(--ink);border-radius:6px;background:var(--bg)}
+#scanInput:focus{outline:3px solid var(--focus);outline-offset:2px}
+.ready{font-size:13px;color:var(--muted)}
+.ready.on{color:var(--ok)}
+.ready.off{color:var(--dup)}
+.result{border-radius:6px;padding:14px 16px;display:grid;gap:3px;min-height:104px;align-content:center}
+.result .word{font-family:var(--f-display);font-weight:700;font-size:clamp(32px,8vw,48px);letter-spacing:.03em;text-transform:uppercase;line-height:1}
+.result .rid{font-family:var(--f-mono);font-size:clamp(16px,3.6vw,22px);overflow-wrap:anywhere}
+.result .det{font-size:14px;opacity:.9}
+.result.idle{background:var(--bg);color:var(--muted)}
+.result.ok{background:var(--ok-soft);color:var(--ok)}
+.result.dup{background:var(--dup-soft);color:var(--dup)}
+.result.bad{background:var(--bad-soft);color:var(--bad)}
+.desk-tools{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;font-size:14px}
+.desk-tools label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr)}
+.stat{padding:12px 16px;border-inline-start:1px solid var(--line);min-width:0}
+.stat:first-child{border-inline-start:0}
+.stat .n{font-family:var(--f-display);font-weight:700;font-size:clamp(34px,7vw,52px);line-height:1;font-variant-numeric:tabular-nums}
+.stat .l{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat.pending .n{color:var(--pending)}
+.stat.done .n{color:var(--ok)}
+.stat.extra .n{color:var(--bad)}
+.progress{display:flex;align-items:center;gap:12px;padding:0 16px 14px}
+.bar{flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:var(--ok);transition:width .2s}
+.pct{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);min-width:3.5ch;text-align:right}
+@media (max-width:560px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stat:nth-child(3){border-inline-start:0}
+  .stat:nth-child(n+3){border-top:1px solid var(--line)}
+}
+
+.lhead{padding:14px 16px;display:grid;gap:10px;border-bottom:1px solid var(--line)}
+h2{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.06em;font-size:20px;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:14px;border:1px solid var(--line);background:transparent;padding:6px 12px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+.chip .c{font-variant-numeric:tabular-nums;opacity:.75;margin-inline-start:6px}
+.ltools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ltools input[type=search]{flex:1 1 200px;min-width:0;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-family:var(--f-mono);font-size:14px}
+.rows{list-style:none;margin:0;padding:0}
+.row{display:grid;grid-template-columns:116px minmax(0,1fr) minmax(0,auto) 108px;gap:4px 14px;align-items:center;padding:9px 16px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.pill{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;text-align:center}
+.pill.pending{background:var(--pending-soft);color:var(--pending-ink)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.rid{font-family:var(--f-mono);font-size:15px;overflow-wrap:anywhere}
+.rmeta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.act{justify-self:end}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.empty.good{color:var(--ok)}
+.more{display:block;margin:12px auto 14px}
+@media (max-width:560px){
+  .row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"pill act" "id id" "meta meta"}
+  .row .pill{grid-area:pill;justify-self:start}
+  .row .rid{grid-area:id}
+  .row .rmeta{grid-area:meta}
+  .row .act{grid-area:act}
+}
+
+.import{padding:16px;display:grid;gap:14px}
+.job{border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:8px;min-width:0}
+.jh{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.jh strong{overflow-wrap:anywhere}
+.tag{font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:2px 6px;color:var(--muted)}
+.err{color:var(--bad);margin:0}
+.fl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.in{padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);min-width:0;max-width:100%}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.filters div{display:grid;gap:4px;min-width:0}
+.filters .in{width:100%}
+.note{font-size:13px;color:var(--muted);margin:0}
+.sum{font-weight:600}
+.sample{display:flex;flex-wrap:wrap;gap:6px}
+.sample span{font-family:var(--f-mono);font-size:13px;background:var(--bg);padding:2px 8px;border-radius:4px}
+.modes{display:grid;gap:6px}
+.modes label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.ibtns{display:flex;flex-wrap:wrap;gap:8px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--btn);color:var(--btn-ink);padding:10px 16px;border-radius:6px;font-size:14px;max-width:calc(100vw - 32px);z-index:30}
+.dropveil{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:24px;background:color-mix(in srgb,var(--bg) 90%,transparent)}
+.dropveil div{border:3px dashed var(--ink);border-radius:10px;padding:48px 28px;font-family:var(--f-display);font-size:clamp(26px,6vw,40px);text-transform:uppercase;letter-spacing:.04em;text-align:center}
+.fallback{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--bg) 80%,transparent)}
+.fallback .box{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:10px;width:min(560px,100%)}
+.fallback textarea{width:100%;min-height:200px;font-family:var(--f-mono);font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px}
+.cam-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cam{display:grid;gap:8px}
+#reader{width:100%;max-width:520px;margin-inline:auto;border-radius:6px;overflow:hidden;background:#000;min-height:120px}
+#reader video{max-width:100%}
+.camerr{color:var(--bad);font-size:14px;margin:0}
+@media (prefers-reduced-motion:reduce){.bar span{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Packet Scan Checklist</h1>
+      <p class="sub">Load tracking IDs from Excel or PDF, scan each packet, and see what is still missing.</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="loadBtn" type="button">Load Excel / PDF</button>
+      <button class="btn" id="exportBtn" type="button" hidden>Export report</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.ods,.pdf,application/pdf" multiple hidden>
+    </div>
+  </header>
+
+  <div class="example" id="exampleBar" hidden>Example data is loaded so you can try scanning. Type <strong>31204518827345</strong> below (or scan any barcode with the camera to see "Not in list"), then load your own Excel or PDF to replace it.</div>
+
+  <section class="import" id="importPanel" hidden aria-label="Review tracking IDs found"></section>
+
+  <section class="desk" aria-label="Scan a packet">
+    <label class="cap" for="scanInput">Scan a packet</label>
+    <div class="scan-row">
+      <input id="scanInput" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Scan barcode or type ID, then Enter">
+      <button class="btn primary" id="scanBtn" type="button">Check</button>
+    </div>
+    <div class="cam-row">
+      <button class="btn" id="camBtn" type="button">Scan with camera</button>
+      <button class="btn mini" id="torchBtn" type="button" hidden>Torch on</button>
+    </div>
+    <div class="cam" id="camBox" hidden>
+      <div id="reader"></div>
+      <p class="note" id="camNote">Hold the barcode inside the box, keep it steady and well lit. Each packet is checked as soon as it is read.</p>
+    </div>
+    <p class="camerr" id="camErr" hidden></p>
+    <div class="ready off" id="ready">Click the box above before scanning.</div>
+    <div class="result idle" id="result" role="status" aria-live="polite"></div>
+    <div class="desk-tools">
+      <button class="btn mini" id="undoBtn" type="button">Undo last</button>
+      <label for="sound"><input type="checkbox" id="sound" checked> Sound</label>
+    </div>
+  </section>
+
+  <section class="statcard" aria-label="Totals">
+    <div class="stats">
+      <div class="stat"><div class="n" id="nTotal">0</div><div class="l">On the list</div></div>
+      <div class="stat done"><div class="n" id="nScanned">0</div><div class="l">Scanned</div></div>
+      <div class="stat pending"><div class="n" id="nPending">0</div><div class="l">Not scanned</div></div>
+      <div class="stat extra"><div class="n" id="nExtra">0</div><div class="l">Not in list</div></div>
+    </div>
+    <div class="progress"><div class="bar"><span id="barFill"></span></div><span class="pct" id="pct">0%</span></div>
+  </section>
+
+  <section class="list" aria-label="Checklist">
+    <div class="lhead">
+      <h2>Checklist</h2>
+      <div class="chips" id="chips">
+        <button class="chip" type="button" data-f="pending" aria-pressed="true">Not scanned<span class="c" id="cPending">0</span></button>
+        <button class="chip" type="button" data-f="scanned" aria-pressed="false">Scanned<span class="c" id="cScanned">0</span></button>
+        <button class="chip" type="button" data-f="extras" aria-pressed="false">Not in list<span class="c" id="cExtra">0</span></button>
+        <button class="chip" type="button" data-f="all" aria-pressed="false">All<span class="c" id="cAll">0</span></button>
+      </div>
+      <div class="ltools">
+        <input type="search" id="q" placeholder="Search tracking ID" aria-label="Search tracking ID" autocomplete="off">
+        <button class="btn mini" id="copyPending" type="button">Copy not-scanned IDs</button>
+        <button class="btn mini" id="copyTable" type="button">Copy as table</button>
+        <button class="btn mini" id="clearBtn" type="button">Clear all</button>
+      </div>
+    </div>
+    <ul class="rows" id="rows"></ul>
+    <div class="empty" id="empty" hidden></div>
+    <button class="btn mini more" id="moreBtn" type="button" hidden>Show more</button>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="dropveil" id="drop" hidden><div>Drop Excel, CSV or PDF to load the checklist</div></div>
+<div class="fallback" id="fallback" hidden>
+  <div class="box">
+    <strong>Copy blocked in this view</strong>
+    <span class="note">Press Ctrl+C (Cmd+C on Mac) to copy the selected text.</span>
+    <textarea id="fbText" readonly aria-label="Text to copy"></textarea>
+    <button class="btn" id="fbClose" type="button">Close</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var LS_KEY="packet-scan-checklist.v1";
+var XLSX_URL="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+var PDF_URL="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+var PDFW_URL="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+function $(id){return document.getElementById(id)}
+var state={list:[],extras:[],undo:[],example:false};
+var idx=new Map();
+var filter="pending",query="",limit=300;
+var jobs=[],opts={min:8,max:30,fmt:"any",prefix:"",mode:"replace"};
+var saveT=0,toastT=0,clearT=0,actx=null,scriptP={};
+var QR_URL="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
+var cam={h:null,on:false,starting:false,lastCode:"",lastAt:0,torch:false,wake:null};
+var coarse=!!(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches);
+
+/* ---------- helpers ---------- */
+function norm(s){return String(s==null?"":s).toUpperCase().replace(/[^A-Z0-9]/g,"")}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function fmtTime(ts){return new Date(ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+function fmtFull(ts){return new Date(ts).toLocaleString()}
+function colLetter(i){var s="";i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s}
+function reindex(){idx=new Map();state.list.forEach(function(it){idx.set(it.key,it)})}
+function counts(){var s=0;for(var i=0;i<state.list.length;i++){if(state.list[i].at)s++}return{total:state.list.length,scanned:s,pending:state.list.length-s,extra:state.extras.length}}
+function toast(msg){var t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){t.hidden=true},2600)}
+function save(){clearTimeout(saveT);saveT=setTimeout(function(){try{localStorage.setItem(LS_KEY,JSON.stringify(state))}catch(e){}},200)}
+function pushUndo(o){state.undo.push(o);if(state.undo.length>200)state.undo.shift()}
+
+/* ---------- example data ---------- */
+function loadSample(){
+  var ids=["31204518827301","31204518827312","31204518827323","31204518827334","31204518827345","31204518827356","EE482910337IN","EE482910351IN","EE482910365IN","TBA318827401155","TBA318827401162","TBA318827401179","SF5502917720","SF5502917731","14439271655208","14439271655219"];
+  var done=[0,1,2,3,5,6,8,9,12],now=Date.now();
+  state.list=ids.map(function(id,i){return{id:id,key:norm(id),src:"Example file.xlsx · row "+(i+2),at:null,manual:false}});
+  done.forEach(function(i,n){state.list[i].at=now-(done.length-n)*52000-90000});
+  state.extras=[{id:"99881234567",key:"99881234567",at:now-70000,count:1}];
+  state.undo=[];state.example=true;reindex();
+}
+
+/* ---------- scan result + sound ---------- */
+function showResult(kind,word,id,det){
+  var r=$("result");r.className="result "+kind;
+  r.innerHTML='<div class="word">'+esc(word)+'</div>'+(id?'<div class="rid">'+esc(id)+'</div>':'')+(det?'<div class="det">'+esc(det)+'</div>':'');
+}
+function beep(kind){
+  if(!$("sound").checked)return;
+  try{
+    actx=actx||new(window.AudioContext||window.webkitAudioContext)();
+    var seq=kind==="ok"?[[880,.09]]:kind==="dup"?[[520,.08],[520,.08]]:[[170,.3]];
+    var t=actx.currentTime;
+    seq.forEach(function(s){
+      var o=actx.createOscillator(),g=actx.createGain();
+      o.type=kind==="bad"?"sawtooth":"sine";o.frequency.value=s[0];
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.18,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+s[1]);
+      o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+s[1]+.02);t+=s[1]+.07;
+    });
+  }catch(e){}
+}
+
+/* ---------- scanning ---------- */
+function handleScan(raw){
+  var code=String(raw||"").trim();
+  if(!code)return;
+  if(!state.list.length){showResult("bad","No checklist",code,"Load an Excel or PDF first so there is something to check against.");beep("bad");return}
+  var key=norm(code);
+  if(!key){showResult("bad","Unreadable",code,"That scan has no letters or digits.");beep("bad");return}
+  var it=idx.get(key),ts=Date.now();
+  if(!it&&/[^A-Za-z0-9]/.test(code)){
+    /* QR codes and some labels hold a link or extra text: look for a listed ID inside it */
+    var toks=code.match(/[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*/g)||[],hit=null,hits=0;
+    for(var k=0;k<toks.length;k++){var h2=idx.get(norm(toks[k]));if(h2&&h2!==hit){hit=h2;hits++}}
+    if(hits===1)it=hit;
+  }
+  if(it){
+    if(it.at){
+      showResult("dup","Already scanned",it.id,"First scanned at "+fmtTime(it.at)+(it.manual?" (marked by hand).":"."));beep("dup");
+    }else{
+      it.at=ts;it.manual=false;pushUndo({op:"scan",key:key});
+      var c=counts();
+      showResult("ok","Scanned",it.id,c.scanned+" of "+c.total+" done · "+c.pending+" left");beep("ok");
+    }
+  }else{
+    var ex=null;
+    for(var j=0;j<state.extras.length;j++){if(state.extras[j].key===key){ex=state.extras[j];break}}
+    if(ex){ex.count++}else{ex={id:code,key:key,at:ts,count:1};state.extras.unshift(ex)}
+    pushUndo({op:"extra",key:key});
+    showResult("bad","Not in list",code,ex.count>1?"Scanned "+ex.count+" times. Set this packet aside.":"Set this packet aside and check its tracking ID.");beep("bad");
+  }
+  save();renderAll();
+}
+function toggleManual(key){
+  var it=idx.get(key);if(!it)return;
+  if(it.at){pushUndo({op:"unscan",key:key,at:it.at,manual:it.manual});it.at=null;it.manual=false;showResult("idle","Unmarked",it.id,"Back on the not-scanned list.")}
+  else{it.at=Date.now();it.manual=true;pushUndo({op:"scan",key:key});showResult("idle","Marked by hand",it.id,"Counted as scanned.")}
+  save();renderAll();
+}
+function doUndo(){
+  var u=state.undo.pop();
+  if(!u){toast("Nothing to undo");return}
+  var it,i;
+  if(u.op==="scan"){it=idx.get(u.key);if(it){it.at=null;it.manual=false;showResult("idle","Undone",it.id,"Back on the not-scanned list.")}}
+  else if(u.op==="unscan"){it=idx.get(u.key);if(it){it.at=u.at||Date.now();it.manual=!!u.manual;showResult("idle","Undone",it.id,"Marked as scanned again.")}}
+  else if(u.op==="extra"){
+    for(i=0;i<state.extras.length;i++){
+      if(state.extras[i].key===u.key){
+        var ex=state.extras[i];ex.count--;
+        if(ex.count<=0)state.extras.splice(i,1);
+        showResult("idle","Undone",ex.id,"Removed that scan.");break;
+      }
+    }
+  }
+  save();renderAll();
+}
+
+/* ---------- rendering ---------- */
+function visibleRows(){
+  var q=norm(query),out;
+  if(filter==="extras")out=state.extras.slice();
+  else if(filter==="pending")out=state.list.filter(function(it){return!it.at});
+  else if(filter==="scanned")out=state.list.filter(function(it){return it.at}).sort(function(a,b){return b.at-a.at});
+  else out=state.list.slice();
+  if(q)out=out.filter(function(it){return it.key.indexOf(q)>=0});
+  return out;
+}
+function rowHtml(it){
+  if(filter==="extras"){
+    return '<li class="row"><span class="pill bad">Not in list</span><span class="rid">'+esc(it.id)+'</span><span class="rmeta">'+(it.count>1?"Scanned "+it.count+" times · ":"")+esc(fmtTime(it.at))+'</span><span class="act"></span></li>';
+  }
+  var sc=!!it.at;
+  var meta=esc(it.src||"");
+  if(sc)meta+=(meta?" · ":"")+esc(fmtTime(it.at))+(it.manual?" (by hand)":"");
+  return '<li class="row"><span class="pill '+(sc?"ok":"pending")+'">'+(sc?"Scanned":"Not scanned")+'</span><span class="rid">'+esc(it.id)+'</span><span class="rmeta">'+meta+'</span><span class="act"><button class="btn mini" type="button" data-act="toggle" data-key="'+esc(it.key)+'">'+(sc?"Unmark":"Mark scanned")+'</button></span></li>';
+}
+function renderList(){
+  var rows=visibleRows(),shown=rows.slice(0,limit),h=[];
+  for(var i=0;i<shown.length;i++)h.push(rowHtml(shown[i]));
+  $("rows").innerHTML=h.join("");
+  var e=$("empty"),c=counts(),msg="",good=false;
+  if(!state.list.length&&filter!=="extras"){msg="No checklist loaded. Use Load Excel / PDF to add your tracking IDs."}
+  else if(!rows.length){
+    if(query.trim())msg="No tracking ID matches that search.";
+    else if(filter==="pending"){msg="Every packet on the list has been scanned.";good=true}
+    else if(filter==="scanned")msg="Nothing scanned yet.";
+    else if(filter==="extras")msg="No packets scanned that are missing from the list.";
+  }
+  e.hidden=!msg;e.textContent=msg;e.className="empty"+(good?" good":"");
+  var more=$("moreBtn");more.hidden=rows.length<=limit;
+  if(!more.hidden)more.textContent="Show "+Math.min(300,rows.length-limit)+" more ("+(rows.length-limit)+" hidden)";
+}
+function renderAll(){
+  var c=counts();
+  $("nTotal").textContent=c.total;$("nScanned").textContent=c.scanned;$("nPending").textContent=c.pending;$("nExtra").textContent=c.extra;
+  var pct=c.total?Math.floor(c.scanned/c.total*100):0;
+  $("barFill").style.width=pct+"%";$("pct").textContent=pct+"%";
+  $("cPending").textContent=c.pending;$("cScanned").textContent=c.scanned;$("cExtra").textContent=c.extra;$("cAll").textContent=c.total;
+  Array.prototype.forEach.call($("chips").children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-f")===filter?"true":"false")});
+  $("exampleBar").hidden=!state.example;
+  $("exportBtn").hidden=!(state.list.length||state.extras.length);
+  renderList();
+}
+function setReady(on){var r=$("ready");r.className="ready "+(on?"on":"off");r.textContent=on?"Scanner ready. Scan a packet now.":"Click the box above before scanning."}
+
+/* ---------- libraries (loaded only when needed) ---------- */
+function loadScript(src){
+  if(scriptP[src])return scriptP[src];
+  scriptP[src]=new Promise(function(res,rej){
+    var s=document.createElement("script");s.src=src;s.onload=res;
+    s.onerror=function(){delete scriptP[src];rej(new Error("Could not load "+src.split("/").pop()+". Check your internet connection."))};
+    document.head.appendChild(s);
+  });
+  return scriptP[src];
+}
+function needXlsx(){return window.XLSX?Promise.resolve():loadScript(XLSX_URL)}
+function needPdf(){
+  return Promise.all([loadScript(PDF_URL),loadScript(PDFW_URL)]).then(function(){
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFW_URL;
+  });
+}
+
+/* ---------- reading files ---------- */
+function cellStr(v){
+  if(v==null||v==="")return"";
+  if(typeof v==="number")return String(v);
+  return String(v).trim();
+}
+function idLike(s){return/^(?=.*\d)[A-Za-z0-9][A-Za-z0-9\-]{5,40}$/.test(s)}
+var HEAD_RE=/track|awb|waybill|way bill|consign|docket|barcode|shipment|parcel|packet|article|\blr\b|\bcn\b|reference/i;
+
+function readSheet(f){
+  return needXlsx().then(function(){return f.arrayBuffer()}).then(function(buf){
+    var wb=XLSX.read(buf,{type:"array",raw:true});
+    var cols=[],cells=[],multi=wb.SheetNames.length>1;
+    wb.SheetNames.forEach(function(sn){
+      var ws=wb.Sheets[sn];if(!ws||!ws["!ref"])return;
+      var r0=XLSX.utils.decode_range(ws["!ref"]).s.r;
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:"",blankrows:true});
+      var first=-1,i,c;
+      for(i=0;i<rows.length&&first<0;i++){for(c=0;c<rows[i].length;c++){if(cellStr(rows[i][c])!==""){first=i;break}}}
+      if(first<0)return;
+      var hdr=rows[first],isHdr=true,nonEmpty=0;
+      for(c=0;c<hdr.length;c++){var hv=hdr[c];if(cellStr(hv)==="")continue;nonEmpty++;if(typeof hv!=="string"||idLike(hv.trim())){isHdr=false;break}}
+      if(!nonEmpty)isHdr=false;
+      var start=isHdr?first+1:first,width=0;
+      rows.forEach(function(r){if(r.length>width)width=r.length});
+      for(c=0;c<width;c++){
+        var vals=[],like=0;
+        for(i=start;i<rows.length;i++){
+          var s=cellStr(rows[i][c]);if(!s)continue;
+          vals.push({v:s,r:i+r0+1});if(idLike(s))like++;
+        }
+        if(!vals.length)continue;
+        var label=isHdr&&cellStr(hdr[c])?cellStr(hdr[c]):"Column "+colLetter(c);
+        cols.push({sheet:sn,multi:multi,label:label,values:vals,hs:HEAD_RE.test(label)?1:0,ratio:like/vals.length});
+      }
+      for(i=first;i<rows.length;i++){for(c=0;c<rows[i].length;c++){var t=cellStr(rows[i][c]);if(t)cells.push({v:t,sn:sn,r:i+r0+1})}}
+    });
+    if(!cols.length)return{name:f.name,kind:"bad",error:"No data found in this file."};
+    var best=-1,bs=-1;
+    cols.forEach(function(col,k){var sc=col.hs*2+col.ratio;if(sc>bs){bs=sc;best=k}});
+    var choice=(cols[best].hs||cols[best].ratio>=.5)?String(best):"all";
+    return{name:f.name,kind:"sheet",cols:cols,cells:cells,choice:choice};
+  });
+}
+function readPdf(f,onPage){
+  return needPdf().then(function(){return f.arrayBuffer()}).then(function(buf){
+    return window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+  }).then(function(doc){
+    var pages=[],n=doc.numPages;
+    function next(p){
+      if(p>n)return Promise.resolve();
+      return doc.getPage(p).then(function(pg){return pg.getTextContent()}).then(function(tc){
+        pages.push(tc.items.map(function(i){return i.str+(i.hasEOL?"\n":" ")}).join(""));
+        if(onPage)onPage(p,n);
+        return next(p+1);
+      });
+    }
+    return next(1).then(function(){
+      var all=pages.join("").replace(/\s/g,"");
+      return{name:f.name,kind:"pdf",pages:pages,noText:all.length<20};
+    });
+  });
+}
+function handleFiles(fileList){
+  var files=Array.prototype.slice.call(fileList||[]);
+  if(!files.length)return;
+  if(cam.on||cam.starting)stopCamera();
+  var p=$("importPanel");p.hidden=false;p.innerHTML='<h2>Reading files</h2><p class="note" id="busy">Opening '+files.length+' file'+(files.length>1?"s":"")+'…</p>';
+  jobs=[];
+  var chain=Promise.resolve();
+  files.forEach(function(f){
+    chain=chain.then(function(){
+      var ext=(f.name.split(".").pop()||"").toLowerCase(),job;
+      if(ext==="pdf"||f.type==="application/pdf"){
+        job=readPdf(f,function(pg,n){var b=$("busy");if(b)b.textContent="Reading "+f.name+": page "+pg+" of "+n+"…"});
+      }else if(["xlsx","xls","xlsm","csv","tsv","ods"].indexOf(ext)>=0){
+        job=readSheet(f);
+      }else{
+        job=Promise.resolve({name:f.name,kind:"bad",error:"Unsupported file type. Use .xlsx, .xls, .csv or .pdf."});
+      }
+      return job.then(function(j){jobs.push(j)},function(e){jobs.push({name:f.name,kind:"bad",error:"Could not read this file: "+(e&&e.message?e.message:e)})});
+    });
+  });
+  chain.then(function(){renderImport()});
+}
+
+/* ---------- extracting IDs ---------- */
+function prefixList(){
+  return opts.prefix.split(/[,\s]+/).map(norm).filter(Boolean);
+}
+function extractJob(j){
+  var out=[];
+  if(j.kind==="bad")return out;
+  var pre=prefixList();
+  function accept(key){if(!pre.length)return true;for(var i=0;i<pre.length;i++){if(key.indexOf(pre[i])===0)return true}return false}
+  if(j.kind==="sheet"&&j.choice!=="all"){
+    var col=j.cols[+j.choice];if(!col)return out;
+    col.values.forEach(function(v){var key=norm(v.v);if(key&&accept(key))out.push({id:v.v,key:key,src:j.name+" · "+(col.multi?col.sheet+" · ":"")+"row "+v.r})});
+    return out;
+  }
+  var chunks=[];
+  if(j.kind==="pdf")j.pages.forEach(function(t,i){chunks.push({t:t,src:j.name+" · page "+(i+1)})});
+  else j.cells.forEach(function(c){chunks.push({t:c.v,src:j.name+" · "+c.sn+" · row "+c.r})});
+  var min=Math.max(1,+opts.min||1),max=Math.max(min,+opts.max||60);
+  chunks.forEach(function(ch){
+    var m=ch.t.match(/[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*/g)||[];
+    m.forEach(function(t){
+      var key=norm(t),L=key.length;
+      if(L<min||L>max||!/\d/.test(key))return;
+      if(opts.fmt==="digits"&&!/^\d+$/.test(key))return;
+      if(/^\d{1,4}-\d{1,2}-\d{1,4}$/.test(t))return;
+      if(!accept(key))return;
+      out.push({id:t,key:key,src:ch.src});
+    });
+  });
+  return out;
+}
+function computeImport(){
+  var seen=new Set(),items=[],dups=0;
+  jobs.forEach(function(j){
+    extractJob(j).forEach(function(it){
+      if(seen.has(it.key)){dups++;return}
+      seen.add(it.key);items.push(it);
+    });
+  });
+  return{items:items,dups:dups};
+}
+
+/* ---------- import review panel ---------- */
+function renderImport(){
+  var p=$("importPanel"),h='<h2>Review tracking IDs found</h2>',usesPattern=false;
+  jobs.forEach(function(j,i){
+    h+='<div class="job"><div class="jh"><strong>'+esc(j.name)+'</strong><span class="tag">'+(j.kind==="pdf"?"PDF":j.kind==="sheet"?"Spreadsheet":"Problem")+'</span></div>';
+    if(j.kind==="bad"){h+='<p class="err">'+esc(j.error)+'</p>'}
+    else if(j.kind==="pdf"){
+      usesPattern=true;
+      h+='<p class="note">'+j.pages.length+' page'+(j.pages.length===1?"":"s")+' read. ';
+      h+=j.noText?'No selectable text found. This looks like a scanned image and text recognition (OCR) is not included. Export the list from the source system as Excel, or as a PDF with real text.':'Tracking IDs are picked out of the text using the filters below.';
+      h+='</p>';
+    }else{
+      h+='<label class="fl" for="col'+i+'">Column with tracking IDs</label><select class="in" id="col'+i+'" data-job="'+i+'">';
+      j.cols.forEach(function(c,k){h+='<option value="'+k+'"'+(String(k)===j.choice?" selected":"")+'>'+esc((c.multi?c.sheet+" › ":"")+c.label)+' ('+c.values.length+' values)</option>'});
+      h+='<option value="all"'+(j.choice==="all"?" selected":"")+'>Search every cell in this file</option></select>';
+    }
+    h+='</div>';
+  });
+  h+='<div class="filters">'+
+    '<div><label class="fl" for="fMin">Min length</label><input class="in" id="fMin" type="number" min="1" max="60" value="'+esc(opts.min)+'"></div>'+
+    '<div><label class="fl" for="fMax">Max length</label><input class="in" id="fMax" type="number" min="1" max="60" value="'+esc(opts.max)+'"></div>'+
+    '<div><label class="fl" for="fFmt">Format</label><select class="in" id="fFmt"><option value="any"'+(opts.fmt==="any"?" selected":"")+'>Letters and digits</option><option value="digits"'+(opts.fmt==="digits"?" selected":"")+'>Digits only</option></select></div>'+
+    '<div><label class="fl" for="fPre">Starts with (optional)</label><input class="in" id="fPre" type="text" placeholder="e.g. EE, TBA" value="'+esc(opts.prefix)+'"></div>'+
+  '</div>';
+  h+='<p class="note">Length and format apply to PDF text and "every cell" searches. "Starts with" applies to everything. Phone numbers and invoice numbers in a PDF can look like tracking IDs, so check the preview.</p>';
+  h+='<div><div class="sum" id="isum"></div><div class="sample" id="isample"></div></div>';
+  if(!state.example&&state.list.length){
+    h+='<div class="modes" role="radiogroup" aria-label="What to do with the current checklist">'+
+      '<label><input type="radio" name="impMode" value="replace"'+(opts.mode==="replace"?" checked":"")+'> Replace the current checklist and clear its scan progress</label>'+
+      '<label><input type="radio" name="impMode" value="add"'+(opts.mode==="add"?" checked":"")+'> Add to the current checklist and keep scan progress</label></div>';
+  }
+  h+='<div class="ibtns"><button class="btn primary" id="iOk" type="button">Create checklist</button><button class="btn" id="iCancel" type="button">Cancel</button></div>';
+  p.innerHTML=h;p.hidden=false;
+  Array.prototype.forEach.call(p.querySelectorAll("select[data-job]"),function(s){s.addEventListener("change",function(){jobs[+s.getAttribute("data-job")].choice=s.value;updateImportSummary()})});
+  $("fMin").addEventListener("input",function(){opts.min=this.value;updateImportSummary()});
+  $("fMax").addEventListener("input",function(){opts.max=this.value;updateImportSummary()});
+  $("fFmt").addEventListener("change",function(){opts.fmt=this.value;updateImportSummary()});
+  $("fPre").addEventListener("input",function(){opts.prefix=this.value;updateImportSummary()});
+  Array.prototype.forEach.call(p.querySelectorAll("input[name=impMode]"),function(r){r.addEventListener("change",function(){opts.mode=r.value})});
+  $("iOk").addEventListener("click",commitImport);
+  $("iCancel").addEventListener("click",closeImport);
+  updateImportSummary();
+  p.scrollIntoView({block:"nearest"});
+}
+function updateImportSummary(){
+  var r=computeImport(),n=r.items.length;
+  $("isum").textContent=n?n+" unique tracking ID"+(n===1?"":"s")+" found"+(r.dups?" · "+r.dups+" repeat"+(r.dups===1?"":"s")+" removed":""):"No tracking IDs found with these settings.";
+  $("isample").innerHTML=r.items.slice(0,12).map(function(it){return"<span>"+esc(it.id)+"</span>"}).join("")+(n>12?'<span class="muted">+'+(n-12)+' more</span>':"");
+  $("iOk").disabled=!n;
+}
+function closeImport(){$("importPanel").hidden=true;$("importPanel").innerHTML="";jobs=[];$("scanInput").focus()}
+function commitImport(){
+  var r=computeImport();if(!r.items.length)return;
+  var replace=state.example||opts.mode==="replace"||!state.list.length,added=0,skipped=0;
+  if(replace){state.list=[];state.extras=[];state.undo=[];state.example=false;reindex()}
+  r.items.forEach(function(it){
+    if(idx.has(it.key)){skipped++;return}
+    var row={id:it.id,key:it.key,src:it.src,at:null,manual:false};
+    for(var i=0;i<state.extras.length;i++){if(state.extras[i].key===it.key){row.at=state.extras[i].at;state.extras.splice(i,1);break}}
+    state.list.push(row);idx.set(it.key,row);added++;
+  });
+  save();closeImport();filter="pending";query="";$("q").value="";limit=300;renderAll();
+  showResult("idle","Checklist ready",added+" tracking IDs",replace?"Scan the first packet to begin.":(skipped?skipped+" were already on the list.":"Added to the existing list."));
+}
+
+/* ---------- copy + export ---------- */
+function showFallback(text){var f=$("fallback"),t=$("fbText");t.value=text;f.hidden=false;t.focus();t.select()}
+function copyText(text,msg){
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){toast(msg)},function(){showFallback(text)})}
+  else showFallback(text);
+}
+function sortedForReport(){
+  var pend=state.list.filter(function(i){return!i.at}),done=state.list.filter(function(i){return i.at}).sort(function(a,b){return a.at-b.at});
+  return{pend:pend,done:done};
+}
+function copyPending(){
+  var s=sortedForReport();
+  if(!s.pend.length){toast("Nothing to copy: every packet is scanned");return}
+  copyText(s.pend.map(function(i){return i.id}).join("\n"),"Copied "+s.pend.length+" tracking IDs");
+}
+function copyTable(){
+  var s=sortedForReport(),L=["Tracking ID\tStatus\tScanned at\tSource"];
+  s.pend.forEach(function(i){L.push([i.id,"Not scanned","",i.src||""].join("\t"))});
+  s.done.forEach(function(i){L.push([i.id,i.manual?"Scanned (by hand)":"Scanned",fmtFull(i.at),i.src||""].join("\t"))});
+  state.extras.forEach(function(i){L.push([i.id,"Not in list",fmtFull(i.at),""].join("\t"))});
+  if(L.length===1){toast("Nothing to copy yet");return}
+  copyText(L.join("\n"),"Copied "+(L.length-1)+" rows");
+}
+function exportReport(){
+  needXlsx().then(function(){
+    var s=sortedForReport(),c=counts(),wb=XLSX.utils.book_new();
+    function sheet(name,rows,w){var ws=XLSX.utils.aoa_to_sheet(rows);ws["!cols"]=w.map(function(x){return{wch:x}});XLSX.utils.book_append_sheet(wb,ws,name)}
+    sheet("Summary",[["Packet scan report"],["Created",fmtFull(Date.now())],[],["On the list",c.total],["Scanned",c.scanned],["Not scanned",c.pending],["Not in list",c.extra]],[16,26]);
+    sheet("Not scanned",[["Tracking ID","Source"]].concat(s.pend.map(function(i){return[i.id,i.src||""]})),[28,40]);
+    sheet("Scanned",[["Tracking ID","Scanned at","Marked by hand","Source"]].concat(s.done.map(function(i){return[i.id,fmtFull(i.at),i.manual?"Yes":"No",i.src||""]})),[28,22,16,40]);
+    sheet("Not in list",[["Tracking ID","First scanned at","Times scanned"]].concat(state.extras.map(function(i){return[i.id,fmtFull(i.at),i.count]})),[28,22,14]);
+    var out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+    var d=new Date(),pad=function(n){return(n<10?"0":"")+n};
+    var name="packet-scan-report-"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"-"+pad(d.getHours())+pad(d.getMinutes())+".xlsx";
+    var blob=new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    var url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url)},5000);
+  }).then(function(){toast("Report downloaded")},function(e){
+    toast("Could not create the report: "+((e&&e.message)||"unknown error"));
+  });
+}
+
+/* ---------- camera scanning ---------- */
+function camError(msg){var e=$("camErr");e.textContent=msg;e.hidden=!msg}
+function setWake(on){
+  try{
+    if(on&&navigator.wakeLock&&!cam.wake){navigator.wakeLock.request("screen").then(function(w){cam.wake=w;w.addEventListener("release",function(){cam.wake=null})},function(){})}
+    else if(!on&&cam.wake){cam.wake.release();cam.wake=null}
+  }catch(e){}
+}
+function onCamCode(text){
+  var now=Date.now();
+  if(text===cam.lastCode&&now-cam.lastAt<2500){cam.lastAt=now;return}
+  cam.lastCode=text;cam.lastAt=now;
+  try{if(navigator.vibrate)navigator.vibrate(40)}catch(e){}
+  handleScan(text);
+}
+function camMessage(e){
+  var s=String(e&&e.name?e.name+": "+(e.message||""):e);
+  if(!window.isSecureContext)return"The camera only works on a secure (https) page. Open this app from its https link.";
+  if(/NotAllowed|Permission|denied/i.test(s))return"Camera permission was blocked. Allow the camera for this site in your browser settings, then tap Scan with camera again.";
+  if(/NotFound|no camera|Requested device not found/i.test(s))return"No camera was found on this device.";
+  if(/NotReadable|in use|Could not start/i.test(s))return"The camera is busy. Close other apps or tabs that use it and try again.";
+  return"Could not start the camera: "+s;
+}
+function startCamera(){
+  if(cam.on||cam.starting)return;
+  camError("");cam.starting=true;
+  var btn=$("camBtn");btn.disabled=true;btn.textContent="Starting camera…";
+  loadScript(QR_URL).then(function(){
+    var F=window.Html5QrcodeSupportedFormats;
+    var cfg={formatsToSupport:[F.CODE_128,F.CODE_39,F.CODE_93,F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.ITF,F.CODABAR,F.QR_CODE,F.DATA_MATRIX],experimentalFeatures:{useBarCodeDetectorIfSupported:true},verbose:false};
+    cam.h=new window.Html5Qrcode("reader",cfg);
+    $("camBox").hidden=false;
+    var scan={fps:10,qrbox:function(vw,vh){var w=Math.floor(Math.min(vw,vh*1.7)*0.92);return{width:Math.max(60,w),height:Math.max(60,Math.floor(w*0.5))}}};
+    function go(extra){
+      var c=Object.assign({},scan,extra||{});
+      return cam.h.start({facingMode:"environment"},c,onCamCode,function(){});
+    }
+    return go({videoConstraints:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}}).catch(function(e){
+      if(/NotAllowed|Permission|denied|NotFound/i.test(String(e)))throw e;
+      return go();
+    });
+  }).then(function(){
+    cam.on=true;cam.starting=false;btn.disabled=false;btn.textContent="Stop camera";
+    setWake(true);
+    try{
+      var tf=cam.h.getRunningTrackCameraCapabilities().torchFeature();
+      if(tf&&tf.isSupported()){cam.torch=false;$("torchBtn").textContent="Torch on";$("torchBtn").hidden=false}
+    }catch(e){}
+  }).catch(function(e){
+    cam.starting=false;cam.on=false;btn.disabled=false;btn.textContent="Scan with camera";
+    $("camBox").hidden=true;camError(camMessage(e));
+    try{if(cam.h){cam.h.clear()}}catch(x){}
+    cam.h=null;
+  });
+}
+function stopCamera(){
+  setWake(false);$("torchBtn").hidden=true;cam.torch=false;
+  var h=cam.h;cam.h=null;cam.on=false;cam.starting=false;
+  var btn=$("camBtn");btn.disabled=false;btn.textContent="Scan with camera";$("camBox").hidden=true;
+  if(!h)return Promise.resolve();
+  return h.stop().then(function(){try{h.clear()}catch(e){}},function(){try{h.clear()}catch(e){}});
+}
+function toggleTorch(){
+  try{
+    var tf=cam.h.getRunningTrackCameraCapabilities().torchFeature();
+    tf.apply(!cam.torch).then(function(){cam.torch=!cam.torch;$("torchBtn").textContent=cam.torch?"Torch off":"Torch on"},function(){toast("Torch is not available on this camera")});
+  }catch(e){toast("Torch is not available on this camera")}
+}
+
+/* ---------- events ---------- */
+$("loadBtn").addEventListener("click",function(){$("fileInput").click()});
+$("fileInput").addEventListener("change",function(){var f=this.files;handleFiles(f);this.value=""});
+$("exportBtn").addEventListener("click",exportReport);
+$("scanBtn").addEventListener("click",function(){var i=$("scanInput");handleScan(i.value);i.value="";i.focus()});
+$("scanInput").addEventListener("keydown",function(e){
+  if(e.key==="Enter"||e.key==="Tab"&&this.value.trim()){e.preventDefault();handleScan(this.value);this.value=""}
+});
+$("scanInput").addEventListener("focus",function(){setReady(true)});
+$("scanInput").addEventListener("blur",function(){setReady(false)});
+$("undoBtn").addEventListener("click",function(){doUndo();if(!coarse)$("scanInput").focus()});
+$("camBtn").addEventListener("click",function(){if(cam.on)stopCamera();else startCamera()});
+$("torchBtn").addEventListener("click",toggleTorch);
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&cam.on)setWake(true)});
+$("chips").addEventListener("click",function(e){var b=e.target.closest("button[data-f]");if(!b)return;filter=b.getAttribute("data-f");limit=300;renderAll()});
+$("q").addEventListener("input",function(){query=this.value;limit=300;renderList()});
+$("moreBtn").addEventListener("click",function(){limit+=300;renderList()});
+$("rows").addEventListener("click",function(e){var b=e.target.closest("button[data-act=toggle]");if(b)toggleManual(b.getAttribute("data-key"))});
+$("copyPending").addEventListener("click",copyPending);
+$("copyTable").addEventListener("click",copyTable);
+$("clearBtn").addEventListener("click",function(){
+  var b=this;
+  if(b.getAttribute("data-armed")!=="1"){
+    b.setAttribute("data-armed","1");b.textContent="Click again to clear everything";b.classList.add("warn");
+    clearTimeout(clearT);clearT=setTimeout(function(){b.removeAttribute("data-armed");b.textContent="Clear all";b.classList.remove("warn")},4000);
+    return;
+  }
+  clearTimeout(clearT);b.removeAttribute("data-armed");b.textContent="Clear all";b.classList.remove("warn");
+  state={list:[],extras:[],undo:[],example:false};reindex();save();filter="pending";renderAll();
+  showResult("idle","Cleared","","Load an Excel or PDF to start a new checklist.");
+});
+$("fbClose").addEventListener("click",function(){$("fallback").hidden=true;$("scanInput").focus()});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("fallback").hidden){$("fallback").hidden=true}});
+document.addEventListener("click",function(e){
+  if(!$("importPanel").hidden||!$("fallback").hidden||cam.on||cam.starting||coarse)return;
+  var t=e.target;if(t&&t.closest&&t.closest("input,select,textarea,button,a,label"))return;
+  $("scanInput").focus({preventScroll:true});
+});
+
+var depth=0;
+function hasFiles(e){var t=e.dataTransfer&&e.dataTransfer.types;return!!t&&Array.prototype.indexOf.call(t,"Files")>=0}
+window.addEventListener("dragenter",function(e){if(hasFiles(e)){depth++;$("drop").hidden=false}});
+window.addEventListener("dragleave",function(e){if(hasFiles(e)){depth=Math.max(0,depth-1);if(!depth)$("drop").hidden=true}});
+window.addEventListener("dragover",function(e){if(hasFiles(e))e.preventDefault()});
+window.addEventListener("drop",function(e){if(hasFiles(e)){e.preventDefault();depth=0;$("drop").hidden=true;handleFiles(e.dataTransfer.files)}});
+
+/* ---------- start ---------- */
+(function init(){
+  var ok=false;
+  try{
+    var raw=localStorage.getItem(LS_KEY);
+    if(raw){var s=JSON.parse(raw);if(s&&Array.isArray(s.list)&&Array.isArray(s.extras)){state={list:s.list,extras:s.extras,undo:Array.isArray(s.undo)?s.undo:[],example:!!s.example};ok=true}}
+  }catch(e){}
+  if(!ok)loadSample();
+  reindex();renderAll();
+  if(!state.list.length)showResult("idle","No checklist","","Use Load Excel / PDF to add your tracking IDs.");
+  else showResult("idle","Ready","","Scan a packet to check it against the list.");
+  if(!coarse){try{$("scanInput").focus({preventScroll:true})}catch(e){}}
+})();
+})();
+</script>
+</body>
+</html>
